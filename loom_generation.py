@@ -221,37 +221,37 @@ def create_loom_from_bam_gtf(
     
     # Determine sorted BAM filename.
     if already_sorted:
-        bam_sorted = bam_file
-        logging.info("Using provided BAM file as already sorted.")
+       bam_sorted = bam_file
+       logging.info("Using provided BAM file as already sorted.")
     else:
-        bam_sorted = os.path.join(os.path.dirname(bam_file), f"cellsorted_{os.path.basename(bam_file)}")
-        if not os.path.exists(bam_sorted):
-            try:
-                mem_line = subprocess.check_output(['grep', 'MemAvailable', '/proc/meminfo'])
-                mb_available = int(mem_line.split()[1]) / 1000
-            except Exception:
-                logging.warning("Could not determine available memory; assuming 32000 MB")
-                mb_available = 32000
-            threads_to_use = min(samtools_threads, multiprocessing.cpu_count())
-            mb_to_use = int(min(samtools_memory, mb_available / threads_to_use))
-            cmd = [
-                "samtools", "sort",
-                "-m", f"{mb_to_use}M",
-                "-O", "BAM",
-                "-@", str(threads_to_use)
-            ]
-            if temp_dir is not None:
-                cmd += ["-T", temp_dir]
-            cmd += ["-o", bam_sorted, bam_file]
-            logging.info("Sorting BAM file with samtools...")
-            logging.debug(f"Samtools command: {' '.join(shlex.quote(c) for c in cmd)}")
-            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            stdout, stderr = proc.communicate()
-            if proc.returncode != 0:
-                raise MemoryError(f"Samtools sort failed (return code {proc.returncode}):\n{stderr.decode()}")
-            logging.info("BAM file sorted successfully.")
+       bam_sorted = os.path.join(os.path.dirname(bam_file), f"cellsorted_{os.path.basename(bam_file)}")
+       if not os.path.exists(bam_sorted):
+          try:
+             mem_line = subprocess.check_output(['grep', 'MemAvailable', '/proc/meminfo'])
+             mb_available = int(mem_line.split()[1]) / 1000
+          except Exception:
+             logging.warning("Could not determine available memory; assuming 32000 MB")
+             mb_available = 32000
+          threads_to_use = min(samtools_threads, multiprocessing.cpu_count())
+          mb_to_use = int(min(samtools_memory, mb_available / threads_to_use))
+          cmd = [
+             "samtools", "sort",
+             "-m", f"{mb_to_use}M",
+             "-O", "BAM",
+             "-@", str(threads_to_use)
+          ]
+          if temp_dir is not None:
+             cmd += ["-T", temp_dir]
+          cmd += ["-o", bam_sorted, bam_file]
+          logging.info("Sorting BAM file with samtools...")
+          logging.debug(f"Samtools command: {' '.join(shlex.quote(c) for c in cmd)}")
+          proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+          stdout, stderr = proc.communicate()
+          if proc.returncode != 0:
+            raise MemoryError(f"Samtools sort failed (return code {proc.returncode}):\n{stderr.decode()}")
+          logging.info("BAM file sorted successfully.")
         else:
-            logging.info(f"Sorted BAM file exists: {bam_sorted}")
+          logging.info(f"Sorted BAM file exists: {bam_sorted}")
     
     # Open the sorted BAM file.
     bam_in = pysam.AlignmentFile(bam_sorted, "rb")
