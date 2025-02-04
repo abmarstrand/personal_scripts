@@ -220,7 +220,7 @@ def create_loom_from_bam_gtf(
     trees = build_interval_trees(genes)
     
     # Determine sorted BAM filename.
-   if already_sorted:
+    if already_sorted:
         bam_sorted = bam_file
         logging.info("Using provided BAM file as already sorted.")
     else:
