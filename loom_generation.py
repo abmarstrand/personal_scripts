@@ -220,36 +220,38 @@ def create_loom_from_bam_gtf(
     trees = build_interval_trees(genes)
     
     # Determine sorted BAM filename.
-    bam_sorted = os.path.join(os.path.dirname(bam_file), f"cellsorted_{os.path.basename(bam_file)}")
-    if not os.path.exists(bam_sorted):
-        # Determine available memory.
-        try:
-            mem_line = subprocess.check_output(['grep', 'MemAvailable', '/proc/meminfo'])
-            mb_available = int(mem_line.split()[1]) / 1000
-        except Exception:
-            logging.warning("Could not determine available memory; assuming 32000 MB")
-            mb_available = 32000
-        threads_to_use = min(samtools_threads, multiprocessing.cpu_count())
-        mb_to_use = int(min(samtools_memory, mb_available / threads_to_use))
-        # Build samtools sort command.
-        cmd = [
-            "samtools", "sort",
-            "-m", f"{mb_to_use}M",
-            "-O", "BAM",
-            "-@", str(threads_to_use)
-        ]
-        if temp_dir is not None:
-            cmd += ["-T", temp_dir]
-        cmd += ["-o", bam_sorted, bam_file]
-        logging.info("Sorting BAM file with samtools...")
-        logging.debug(f"Samtools command: {' '.join(shlex.quote(c) for c in cmd)}")
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = proc.communicate()
-        if proc.returncode != 0:
-            raise MemoryError(f"Samtools sort failed (return code {proc.returncode}):\n{stderr.decode()}")
-        logging.info("BAM file sorted successfully.")
+   if already_sorted:
+        bam_sorted = bam_file
+        logging.info("Using provided BAM file as already sorted.")
     else:
-        logging.info(f"Sorted BAM file found: {bam_sorted}")
+        bam_sorted = os.path.join(os.path.dirname(bam_file), f"cellsorted_{os.path.basename(bam_file)}")
+        if not os.path.exists(bam_sorted):
+            try:
+                mem_line = subprocess.check_output(['grep', 'MemAvailable', '/proc/meminfo'])
+                mb_available = int(mem_line.split()[1]) / 1000
+            except Exception:
+                logging.warning("Could not determine available memory; assuming 32000 MB")
+                mb_available = 32000
+            threads_to_use = min(samtools_threads, multiprocessing.cpu_count())
+            mb_to_use = int(min(samtools_memory, mb_available / threads_to_use))
+            cmd = [
+                "samtools", "sort",
+                "-m", f"{mb_to_use}M",
+                "-O", "BAM",
+                "-@", str(threads_to_use)
+            ]
+            if temp_dir is not None:
+                cmd += ["-T", temp_dir]
+            cmd += ["-o", bam_sorted, bam_file]
+            logging.info("Sorting BAM file with samtools...")
+            logging.debug(f"Samtools command: {' '.join(shlex.quote(c) for c in cmd)}")
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout, stderr = proc.communicate()
+            if proc.returncode != 0:
+                raise MemoryError(f"Samtools sort failed (return code {proc.returncode}):\n{stderr.decode()}")
+            logging.info("BAM file sorted successfully.")
+        else:
+            logging.info(f"Sorted BAM file exists: {bam_sorted}")
     
     # Open the sorted BAM file.
     bam_in = pysam.AlignmentFile(bam_sorted, "rb")
@@ -381,9 +383,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Stand-alone loom file generator for spliced, unspliced, and ambiguous counts."
     )
-    parser.add_argument("bam_file", help="Path to the BAM file (unsorted by cell barcode).")
+    parser.add_argument("bam_file", help="Path to the BAM file.")
     parser.add_argument("gtf_file", help="Path to the GTF annotation file.")
     parser.add_argument("output_loom", help="Path to the output loom file.")
+    parser.add_argument("--already_sorted", action="store_true",
+                        help="Flag to indicate that the provided BAM file is already sorted.")
     parser.add_argument("--temp_dir", default=None, help="Temporary directory for samtools sort (-T flag).")
     parser.add_argument("--samtools_threads", type=int, default=16, help="Number of threads for samtools sort.")
     parser.add_argument("--samtools_memory", type=int, default=2048, help="Memory (MB) per thread for samtools sort.")
@@ -395,6 +399,7 @@ if __name__ == "__main__":
         bam_file=args.bam_file,
         gtf_file=args.gtf_file,
         output_loom=args.output_loom,
+        already_sorted=args.already_sorted,
         temp_dir=args.temp_dir,
         samtools_threads=args.samtools_threads,
         samtools_memory=args.samtools_memory,
