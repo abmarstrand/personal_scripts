@@ -179,6 +179,7 @@ def create_loom_from_bam_gtf(
     samtools_threads: int = 16,
     samtools_memory: int = 2048,
     loom_numeric_dtype: str = "uint32",
+    already_sorted: bool = False,
     verbose: int = 2
 ) -> None:
     """
