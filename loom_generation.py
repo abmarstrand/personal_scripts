@@ -249,9 +249,9 @@ def create_loom_from_bam_gtf(
           stdout, stderr = proc.communicate()
           if proc.returncode != 0:
             raise MemoryError(f"Samtools sort failed (return code {proc.returncode}):\n{stderr.decode()}")
-          logging.info("BAM file sorted successfully.")
-        else:
-          logging.info(f"Sorted BAM file exists: {bam_sorted}")
+            logging.info("BAM file sorted successfully.")
+          else:
+            logging.info(f"Sorted BAM file exists: {bam_sorted}")
     
     # Open the sorted BAM file.
     bam_in = pysam.AlignmentFile(bam_sorted, "rb")
